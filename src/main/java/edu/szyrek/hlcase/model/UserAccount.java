@@ -14,7 +14,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
-import java.util.Date;
+import java.time.Instant;
 
 @Entity
 @Table(name = "user_account")
@@ -43,11 +43,11 @@ public class UserAccount {
     @NotNull
     private Gender gender;
 
-    private Date creationTime;
+    private Instant creationTime;
 
     @PrePersist
     void createdAt() {
-        this.creationTime = new Date();
+        this.creationTime = Instant.now();
     }
 
     public Long getId() {
@@ -82,11 +82,11 @@ public class UserAccount {
         this.gender = gender;
     }
 
-    public Date getCreationTime() {
+    public Instant getCreationTime() {
         return creationTime;
     }
 
-    public void setCreationTime(Date creationTime) {
+    public void setCreationTime(Instant creationTime) {
         this.creationTime = creationTime;
     }
 }
