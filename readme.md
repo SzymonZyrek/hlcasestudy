@@ -1,23 +1,19 @@
-# Jakarta EE / MicroProfile: strict 1:1 port
+# Challenge: minimal Jakarta EE 11 + Jakarta Data 1.0
 
-This branch is **not an extended version** of the case study. It ports the same WAR to an independent Jakarta EE + MicroProfile implementation, Open Liberty, to compare standardized enterprise-Java runtimes.
+**Goal:** make the original UserAccount exercise as short and idiomatic as possible, without adding any behavior.
 
-**Application Java source is byte-for-byte unchanged from `master`**:
-- `JaxRsActivator`: same `/rest` prefix.
-- `UserAccountEndpoint`: same HTTP paths, payloads, response codes and partial `PUT`.
-- `UserAccountRepository`: same `EntityManager`, JPQL, JTA transactions, pagination and 404 handling.
-- `UserAccount` and `Gender`: same entity, same existing validation annotations and `@PrePersist`.
-- No `@Valid` added anywhere. No new manual validation, DTO, service layer, business logic, security or business endpoints.
+Based on `comparison/microprofile-open-liberty` (Open Liberty + MicroProfile 7.1 + Jakarta EE 11); the historical Jakarta EE implementation remains on `master`.
 
-## Runtime
+## Changes
 
-- **Java 21**
-- **Jakarta EE 11 Web Profile** (Jakarta REST, CDI, Persistence, Transactions, Bean Validation)
-- **Eclipse MicroProfile 7.1** (Open Liberty runtime's supported platform; no new MicroProfile APIs are used by application code)
-- **Open Liberty 26.0.0.10**, **EclipseLink** as the JPA provider
-- H2 in-memory database, three original sample users; WAR
+- Handwritten `EntityManager` DAO replaced by the standardized **Jakarta Data 1.0** `CrudRepository<UserAccount, Long>`.
+- One JAX-RS resource handles the same five HTTP operations. No service, DTO, AOP-style application features, new validation, custom exception mapper or error handler.
+- The original JPA entity, validation annotations, JAX-RS activation, persistence unit, database and three demo records are unchanged.
+- The unused `UserAccountException` is removed.
+- Same HTTP endpoints, same 1-based pagination, ID-in-body **partial** PUT (only non-null age/gender), 201/204/404 statuses and seed data.
+- No new `@Valid`: original Jakarta EE request bodies were not annotated with it. Existing JPA/Bean Validation constraints remain.
 
-MicroProfile itself does **not** define persistence. The application still uses Jakarta Persistence and JTA. An honest 1:1 port does not need to invent usage of MP Config, Health, Fault Tolerance, etc. The MicroProfile runtime has platform-provided capabilities (potentially including administrative / standard endpoints), but **no additional application features** were introduced.
+The platform still happens to provide MicroProfile capabilities, but application code uses only **Jakarta EE + Jakarta Data**, not any MicroProfile-specific API. MicroProfile is a runtime platform standard, not an alternative ORM.
 
 ## Run
 
@@ -26,47 +22,18 @@ mvn clean package
 mvn liberty:run
 ```
 
-Or `mvn liberty:dev` for development and `mvn liberty:stop` from another terminal to stop the background server.
+Base URL: `http://localhost:9080/hlcasestudy/rest/useraccounts`
 
-Same URL as WildFly:
+CI uses `mvn clean package`, provisions Open Liberty, starts the WAR, then runs the **same unchanged** black-box `scripts/smoke.py` used on the one-to-one MicroProfile branch.
 
-```bash
-curl http://localhost:9080/hlcasestudy/rest/useraccounts
-curl 'http://localhost:9080/hlcasestudy/rest/useraccounts/?pageSize=2&page=1'
-curl http://localhost:9080/hlcasestudy/rest/useraccounts/1
+## Compare
 
-curl -i -X POST http://localhost:9080/hlcasestudy/rest/useraccounts \
-  -H 'Content-Type: application/json' \
-  -d '{"username":"Lisa","age":8,"gender":"FEMALE"}'
+| Original `master` | This branch |
+|---|---|
+| Manual JPA queries and `EntityManager` | Jakarta Data `CrudRepository` + two `@Find` methods |
+| JAX-RS endpoint delegates to DAO | JAX-RS endpoint injects repository directly |
+| `@Transactional` on modifying DAO methods | Repository transactions; JTA boundary for partial update/delete |
+| Explicit SQL ordering by id | `@OrderBy("id")` |
+| Same JPA annotations and entity | Unchanged |
 
-curl -i -X PUT http://localhost:9080/hlcasestudy/rest/useraccounts \
-  -H 'Content-Type: application/json' \
-  -d '{"id":"1","age":21,"gender":"FEMALE"}'
-
-curl -i -X DELETE http://localhost:9080/hlcasestudy/rest/useraccounts/2
-```
-
-## Exact mapping against `master`
-
-| Area | `master` | This branch |
-| --- | --- | --- |
-| Business Java | Jakarta EE | **Unchanged** |
-| REST contract | `/hlcasestudy/rest/useraccounts` | **Unchanged** |
-| JPA entities and validation constraints | `UserAccount` | **Unchanged** |
-| SQL seed data | Homer / Bart / Marge | Same three users |
-| Packaging | WAR | WAR |
-| Runtime | WildFly | Open Liberty + MicroProfile 7.1 |
-| Database | WildFly ExampleDS | Open Liberty H2 in-memory DataSource |
-| Persistence provider | Hibernate | EclipseLink |
-| Configuration | Hibernate-specific `persistence.xml`, older schema | Standard Jakarta Persistence 3.2, server-side JNDI DataSource |
-| Port | 8080 | 9080 |
-
-The provider-specific Hibernate second-level / query cache settings in the historical version are deliberately **not** replicated as new features of a different provider. Likewise, replacing the old vendor-specific seed SQL with equivalent H2 SQL is an infrastructure adjustment, not a change to the API.
-
-The original repository does not add `@Valid` on REST method arguments. This variant intentionally does not add it either. Do not mistake identical code for a guarantee of byte-identical HTTP errors from different JSON providers; runtime-specific error representation may differ.
-
-## Verification
-
-GitHub Actions builds the WAR, boots Open Liberty and exercises the existing CRUD + pagination API using `scripts/smoke.py`. These tests do not add validation or behavior to the application.
-
-The key point of this comparison: **MicroProfile complements Jakarta EE rather than replacing its JPA/JAX-RS API**. The application can move between standards-compliant runtimes with its business code unchanged.
+The goal is **minimal readable source**, not minimizing dependencies, shaving bytes off a JAR or providing a production architecture. This is educational; it is *not* a claim of identical behavior in every vendor-specific error case.
