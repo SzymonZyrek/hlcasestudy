@@ -1,0 +1,26 @@
+name: Spring Boot comparison
+on:
+  push:
+    branches:
+      - comparison/spring-boot-4
+  pull_request:
+    paths:
+      - 'pom.xml'
+      - 'src/**'
+      - 'readme.md'
+      - '.github/workflows/spring-boot-comparison.yml'
+  workflow_dispatch:
+
+jobs:
+  verify-spring-boot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: pom.xml
+      - name: Maven verify
+        run: mvn -B -ntp clean verify
