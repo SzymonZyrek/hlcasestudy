@@ -1,62 +1,38 @@
-# Spring Boot 4 — UserAccount REST Case Study
+# Challenge: minimal Spring Boot 4 + Spring Data JPA
 
-This branch ports the original [Jakarta EE / WildFly version on `master`](https://github.com/SzymonZyrek/hlcasestudy/tree/master) to Spring Boot **4.1.2** and Java **21**. It is an alternative implementation of the *same* small CRUD exercise, not an additional application in a subdirectory.
+**Goal:** rewrite the same tiny UserAccount CRUD as short and idiomatic as possible, with **no new functionality or validation**.
 
-The usual Maven project layout applies: `pom.xml`, `src/main/java`, `src/main/resources`, and `src/test/java`. The original Jakarta sources remain on `master` and are **not duplicated** on this branch.
+Based on `comparison/spring-boot-4` (Spring Boot 4.1.2, Java 21, H2).
 
-## Stack
+## Changes
 
-- Spring Boot 4.1.2, Spring MVC and constructor injection
-- Spring Data JPA / Hibernate / Jakarta Validation
-- Embedded H2 (in-memory) and Maven
-- JUnit and MockMvc integration tests
-- Java 21
+- Drop the service layer. For this tiny example the controller calls Spring Data `JpaRepository` directly.
+- Drop the update DTO: original `PUT` accepts the same `UserAccount` body as `POST`, with `id` in JSON and *only non-null age/gender* applied. No changes to username.
+- Remove explicit HTTP `@Valid` and custom page-parameter validation that the original Jakarta EE sample did not have. **The existing JPA entity validation annotations remain unchanged.**
+- Put `@Transactional` on the one partial-update method; Spring Data already handles transactions for `save` and `delete`. The managed JPA entity is updated by dirty checking.
+- Retain the original response codes (201 POST, 204 PUT/DELETE, 404 unknown user), 1-based pagination, id ordering, `@PrePersist`, and Homer/Bart/Marge data.
 
-## Build and run
+The exercise is *not* a recommendation to omit a service layer for complex business logic. It measures the code needed for **this** application.
 
-From the repository root:
+## Run
 
 ```bash
 mvn clean verify
 mvn spring-boot:run
 ```
 
-The Spring Boot server listens on port **8081**. H2 is in-memory and initialized with the original example users.
+Base URL: `http://localhost:8081/rest/useraccounts`
 
-```bash
-curl http://localhost:8081/rest/useraccounts
-curl 'http://localhost:8081/rest/useraccounts?pageSize=2&page=1'
-curl http://localhost:8081/rest/useraccounts/1
+The integration test checks the unchanged CRUD contract, seed, 1-based pagination, missing pagination parameter behavior, timestamp and partial PUT. No validation was added to improve the test results.
 
-curl -i -X POST http://localhost:8081/rest/useraccounts \
-  -H 'Content-Type: application/json' \
-  -d '{"username":"Lisa","age":8,"gender":"FEMALE"}'
+## Compare
 
-curl -i -X PUT http://localhost:8081/rest/useraccounts \
-  -H 'Content-Type: application/json' \
-  -d '{"id":1,"age":21,"gender":"FEMALE"}'
+| Jakarta Data 1.0 | Spring Data JPA |
+|---|---|
+| `@Repository` + `CrudRepository<UserAccount, Long>` | `JpaRepository<UserAccount, Long>` |
+| `@Find @OrderBy("id")` | `findAll(Sort.by("id"))` |
+| `PageRequest.ofPage(page).size(size)` (1-based) | `PageRequest.of(page-1, size, sort)` (0-based) |
+| JAX-RS `@Path/@GET/@POST` | Spring MVC `@RequestMapping/@GetMapping/@PostMapping` |
+| CDI + JTA transactions | Spring DI + proxy-based transaction on PUT |
 
-curl -i -X DELETE http://localhost:8081/rest/useraccounts/2
-```
-
-## Comparing the branches
-
-| Jakarta EE (`master`) | Spring Boot (`comparison/spring-boot-4`) |
-| --- | --- |
-| WAR, provided Jakarta EE APIs, WildFly | Spring Boot executable JAR and embedded server |
-| `config/JaxRsActivator.java` | `SpringCaseStudyApplication.java` |
-| `rest/UserAccountEndpoint.java` (JAX-RS) | `rest/UserAccountController.java` (Spring MVC) |
-| `dao/UserAccountRepository.java` (manual `EntityManager`) | `repository/UserAccountRepository.java` (`JpaRepository`) |
-| JTA `@Transactional` on DAO mutations | Spring `@Transactional` on service methods |
-| Jakarta JPA entity and validation | Jakarta JPA entity and validation |
-| `META-INF/persistence.xml`, WildFly ExampleDS | `application.properties`, embedded H2 |
-
-The Spring port adds a service layer for transaction boundaries and a record DTO for partial PUT. Both implementations support CRUD and 1-based pagination. Spring explicitly validates HTTP request bodies using `@Valid` and returns 400 for malformed pagination; the original JAX-RS endpoint does not use `@Valid` on request bodies. Spring's route has no WAR context prefix.
-
-The historical persistence configuration includes provider-level caching flags; this Spring example does not configure second-level caching. It intentionally excludes unrelated production features such as security, telemetry, and database migrations so the frameworks can be compared on a small, consistent task.
-
-## Tests
-
-`mvn test` runs a full Spring context with MockMvc, Hibernate, and H2; CRUD, seed, pagination, validation, timestamps, and not-found behavior are covered.
-
-**Scope:** educational framework comparison, not a production template. Do not infer runtime-performance conclusions from these configurations.
+Both use standard Jakarta Persistence annotations in the entity. Spring's solution is not intended to be a smaller *runtime artifact* or a performance benchmark; compare application source and the resulting APIs.
