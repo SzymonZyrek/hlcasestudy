@@ -1,0 +1,32 @@
+name: MicroProfile / Open Liberty comparison
+on:
+  push:
+    branches:
+      - comparison/microprofile-open-liberty
+  pull_request:
+    paths:
+      - 'pom.xml'
+      - 'src/**'
+      - 'scripts/smoke.py'
+      - '.github/workflows/microprofile-comparison.yml'
+  workflow_dispatch:
+
+jobs:
+  verify-one-to-one:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Verify WAR is buildable
+        run: mvn -B -ntp clean package
+      - name: Provision and boot Open Liberty
+        run: mvn -B -ntp liberty:create liberty:install-feature liberty:deploy liberty:start
+      - name: Exercise existing CRUD API only
+        run: python3 scripts/smoke.py
+      - name: Stop server
+        if: always()
+        run: mvn -B -ntp liberty:stop || true

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<server description="One-to-one UserAccount CRUD on MicroProfile / Open Liberty">
+    <featureManager>
+        <!-- Open Liberty 26.0.0.10 supports these platform versions together. -->
+        <feature>webProfile-11.0</feature>
+        <feature>microProfile-7.1</feature>
+    </featureManager>
+
+    <httpEndpoint id="defaultHttpEndpoint" host="*" httpPort="9080" httpsPort="-1" />
+
+    <!-- Keep the same WAR context root and JAX-RS @ApplicationPath(/rest). -->
+    <webApplication location="hlcasestudy.war" contextRoot="/hlcasestudy" />
+
+    <!-- Equivalent of WildFly's ExampleDS for a self-contained comparison. -->
+    <library id="h2Lib">
+        <fileset dir="${server.config.dir}/jdbc" includes="h2-*.jar" />
+    </library>
+    <jdbcDriver id="h2Driver" libraryRef="h2Lib"
+                javax.sql.DataSource="org.h2.jdbcx.JdbcDataSource" />
+    <dataSource id="hlcaseDataSource" jndiName="jdbc/hlcase" jdbcDriverRef="h2Driver">
+        <properties URL="jdbc:h2:mem:hlcase;DB_CLOSE_DELAY=-1" user="sa" password="" />
+    </dataSource>
+</server>
