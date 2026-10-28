@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - comparison/spring-boot-4
+      - challenge/minimal-spring-data
   pull_request:
     paths:
       - 'pom.xml'

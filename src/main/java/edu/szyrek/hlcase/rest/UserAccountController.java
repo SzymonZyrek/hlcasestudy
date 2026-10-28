@@ -1,62 +1,58 @@
 package edu.szyrek.hlcase.rest;
 
-import edu.szyrek.hlcase.dto.UserAccountUpdateRequest;
 import edu.szyrek.hlcase.model.UserAccount;
-import edu.szyrek.hlcase.service.UserAccountService;
-import jakarta.validation.Valid;
+import edu.szyrek.hlcase.repository.UserAccountRepository;
 import java.util.List;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
-// Same URL and HTTP surface as the original /hlcasestudy/rest/useraccounts,
-// minus the WAR's /hlcasestudy deployment-context prefix.
 @RestController
-@RequestMapping(path = "/rest/useraccounts", produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(path = "/rest/useraccounts", produces = "application/json")
 public class UserAccountController {
 
-    private final UserAccountService service;
+    private final UserAccountRepository users;
 
-    public UserAccountController(UserAccountService service) {
-        this.service = service;
+    public UserAccountController(UserAccountRepository users) {
+        this.users = users;
     }
 
     @GetMapping
-    public List<UserAccount> getAll(
-            @RequestParam(required = false) Integer pageSize,
-            @RequestParam(required = false) Integer page) {
-        return service.findAll(pageSize, page);
+    public List<UserAccount> all(@RequestParam(required = false) Integer pageSize,
+                                 @RequestParam(required = false) Integer page) {
+        Sort byId = Sort.by("id");
+        return pageSize != null && page != null
+                ? users.findAll(PageRequest.of(page - 1, pageSize, byId)).getContent()
+                : users.findAll(byId);
     }
 
     @GetMapping("/{id}")
     public UserAccount get(@PathVariable Long id) {
-        return service.findById(id);
+        return users.findById(id).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "User with id of " + id + " does not exist."));
     }
 
-    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(consumes = "application/json")
     @ResponseStatus(HttpStatus.CREATED)
-    public void create(@Valid @RequestBody UserAccount userAccount) {
-        service.create(userAccount);
+    public void create(@RequestBody UserAccount user) {
+        users.save(user);
     }
 
-    @PutMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PutMapping(consumes = "application/json")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void update(@Valid @RequestBody UserAccountUpdateRequest userAccount) {
-        service.update(userAccount);
+    @Transactional
+    public void update(@RequestBody UserAccount input) {
+        UserAccount user = get(input.getId());
+        if (input.getAge() != null) user.setAge(input.getAge());
+        if (input.getGender() != null) user.setGender(input.getGender());
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        service.delete(id);
+        users.delete(get(id));
     }
 }
