@@ -1,13 +1,14 @@
 package edu.szyrek.hlcase.rest;
 
-import edu.szyrek.hlcase.dao.UserAccountRepository;
 import edu.szyrek.hlcase.model.UserAccount;
+import edu.szyrek.hlcase.repository.UserAccounts;
+import jakarta.data.page.PageRequest;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Response;
 import java.util.List;
-
 
 @Path("useraccounts")
 @ApplicationScoped
@@ -16,41 +17,40 @@ import java.util.List;
 public class UserAccountEndpoint {
 
     @Inject
-    UserAccountRepository userAccountRepository;
+    UserAccounts users;
 
     @GET
-    public List<UserAccount> getAll(
-            @QueryParam("pageSize") Integer pageSize,
-            @QueryParam("page") Integer page
-            ){
-        if (page != null && pageSize != null) {
-            return userAccountRepository.findAll(pageSize, page);
-        }
-        return userAccountRepository.findAll();
+    public List<UserAccount> all(@QueryParam("pageSize") Integer size,
+                                 @QueryParam("page") Integer page) {
+        return size != null && page != null
+                ? users.paged(PageRequest.ofPage(page).size(size)).content()
+                : users.all();
     }
 
-    @GET
-    @Path("/{id}")
+    @GET @Path("/{id}")
     public UserAccount get(@PathParam("id") Long id) {
-        return userAccountRepository.findUserAccountById(id);
+        return users.findById(id).orElseThrow(() ->
+                new WebApplicationException("User with id of " + id + " does not exist.", 404));
     }
 
     @POST
-    public Response create(UserAccount userAccount) {
-        userAccountRepository.createUserAccount(userAccount);
+    public Response create(UserAccount user) {
+        users.insert(user);
         return Response.status(201).build();
     }
 
-    @PUT
-    public Response update(UserAccount userAccount) {
-        userAccountRepository.updateUserAccount(userAccount);
-        return Response.status(204).build();
-    }
-    @DELETE
-    @Path("/{id}")
-    public Response delete(@PathParam("id") Long id) {
-        userAccountRepository.deleteUserAccount(id);
-        return Response.status(204).build();
+    @PUT @Transactional
+    public Response update(UserAccount input) {
+        UserAccount user = get(input.getId());
+        if (input.getAge() != null) user.setAge(input.getAge());
+        if (input.getGender() != null) user.setGender(input.getGender());
+        users.update(user);
+        return Response.noContent().build();
     }
 
+    @DELETE @Path("/{id}") @Transactional
+    public Response delete(@PathParam("id") Long id) {
+        users.delete(get(id));
+        return Response.noContent().build();
+    }
 }

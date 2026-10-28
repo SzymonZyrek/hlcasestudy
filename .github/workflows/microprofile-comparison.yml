@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - comparison/microprofile-open-liberty
+      - challenge/minimal-jakarta-data
   pull_request:
     paths:
       - 'pom.xml'
