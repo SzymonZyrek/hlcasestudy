@@ -5,7 +5,9 @@ on:
       - comparison/spring-boot-4
   pull_request:
     paths:
-      - 'spring-boot/**'
+      - 'pom.xml'
+      - 'src/**'
+      - 'readme.md'
       - '.github/workflows/spring-boot-comparison.yml'
   workflow_dispatch:
 
@@ -19,6 +21,6 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-          cache-dependency-path: spring-boot/pom.xml
+          cache-dependency-path: pom.xml
       - name: Maven verify
-        run: mvn -B -ntp -f spring-boot/pom.xml clean verify
+        run: mvn -B -ntp clean verify

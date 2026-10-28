@@ -1,40 +1,50 @@
 package edu.szyrek.hlcase.model;
-import jakarta.persistence.*;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
-
 import java.util.Date;
 
-
 @Entity
-@NamedQuery(name = "UserAccounts.findAll",
-        query = "SELECT c FROM UserAccount c ORDER BY c.id")
+@Table(name = "user_account")
 public class UserAccount {
+
     @Id
     @SequenceGenerator(
             name = "userAccountSequence",
-            sequenceName = "userAccountId_seq",
+            sequenceName = "user_account_id_seq",
             allocationSize = 1,
             initialValue = 1)
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "userAccountSequence")
     private Long id;
+
     @Column(length = 40, unique = true)
     @NotNull
     @Pattern(regexp = "[a-zA-Z0-9]*")
     private String username;
-    @Column
+
     @NotNull
-    @Min(value = 1)
-    @Max(value = 200)
+    @Min(1)
+    @Max(200)
     private Long age;
+
     @Enumerated(EnumType.STRING)
     @NotNull
-    @Column
     private Gender gender;
-    @Column
+
     private Date creationTime;
+
     @PrePersist
     void createdAt() {
         this.creationTime = new Date();
@@ -52,16 +62,8 @@ public class UserAccount {
         return username;
     }
 
-    public void setUsername(String name) {
-        this.username = name;
-    }
-
-    public Gender getGender() {
-        return gender;
-    }
-
-    public void setGender(Gender gender) {
-        this.gender = gender;
+    public void setUsername(String username) {
+        this.username = username;
     }
 
     public Long getAge() {
@@ -70,6 +72,14 @@ public class UserAccount {
 
     public void setAge(Long age) {
         this.age = age;
+    }
+
+    public Gender getGender() {
+        return gender;
+    }
+
+    public void setGender(Gender gender) {
+        this.gender = gender;
     }
 
     public Date getCreationTime() {
